@@ -15,6 +15,8 @@ class TemporalConv(nn.Module):
             dilation=(dilation, 1))
 
         self.bn = nn.BatchNorm2d(out_channels)
+        
+        
 
     def forward(self, x):
         x = self.conv(x)

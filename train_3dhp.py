@@ -111,13 +111,23 @@ def evaluate(model, test_loader, n_frames):
 
     for data in tqdm(test_loader, 0):
         batch_cam, gt_3D, input_2D, seq, scale, bb_box = data
-
-        [input_2D, gt_3D, batch_cam, scale, bb_box] = get_variable('test', [input_2D, gt_3D, batch_cam, scale, bb_box])
+        
+        if torch.cuda.is_available():
+            [input_2D, gt_3D, batch_cam, scale, bb_box] = get_variable('test', [input_2D, gt_3D, batch_cam, scale, bb_box])
+        else:
+            [input_2D, gt_3D, batch_cam, scale, bb_box] = [input_2D.to(torch.float32), gt_3D.to(torch.float32), batch_cam.to(torch.float32), scale.to(torch.float32), bb_box.to(torch.float32)]
+            
         N = input_2D.size(0)
 
         out_target = gt_3D.clone().view(N, -1, 17, 3)
         out_target[:, :, 14] = 0
-        gt_3D = gt_3D.view(N, -1, 17, 3).type(torch.cuda.FloatTensor)
+        gt_3D = gt_3D.view(N, -1, 17, 3)
+        
+        if torch.cuda.is_available():
+            gt_3D = gt_3D.type(torch.cuda.FloatTensor)
+        else:
+            gt_3D = gt_3D.to(torch.float32)
+            
 
         input_2D, output_3D = input_augmentation(input_2D, model, joints_left, joints_right)
 
@@ -127,6 +137,9 @@ def evaluate(model, test_loader, n_frames):
 
         pred_out[..., 14, :] = 0
         pred_out = denormalize(pred_out, seq)
+        
+        if torch.cuda.is_available():
+            pred_out = pred_out.type(torch.cuda)
 
         pred_out = pred_out - pred_out[..., 14:15, :] # Root-relative prediction
         

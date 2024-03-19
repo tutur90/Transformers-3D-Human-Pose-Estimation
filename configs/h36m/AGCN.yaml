@@ -3,19 +3,17 @@ learning_rate: 0.0005
 batch_size: 16
 weight_decay: 0.01
 lr_decay: 0.99
-epochs: 60
+epochs: 10
 
 # Model
-model_name: MotionAGFormer
-n_layers: 12
-dim_in: 3 
-dim_feat: 64
-dim_rep: 512
+model_name: AGCN
+dim_in: 3
+channels: 96
 dim_out: 3
 mlp_ratio: 4
 act_layer: gelu
 attn_drop: 0.0
-drop: 0.0
+dropout: 0.25
 drop_path: 0.0
 use_layer_scale: True
 layer_scale_init_value: 0.00001

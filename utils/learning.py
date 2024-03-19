@@ -1,4 +1,6 @@
 from model.MotionAGFormer import MotionAGFormer
+from model.GCN import MGCN
+from model.AGCN import AGCN
 from torch import nn
 import torch
 
@@ -56,6 +58,25 @@ def load_model(args):
                                graph_only=args.graph_only,
                                neighbour_num=args.neighbour_num,
                                n_frames=args.n_frames)
+    elif args.model_name == "GCN":
+        model = MGCN(
+                    dim_in=args.dim_in,
+                    dim_out=args.dim_out,
+                    neighbour_num=args.neighbour_num,
+                    num_joints=args.num_joints,
+                    n_frames=args.n_frames,
+        )
+        
+    elif args.model_name == "AGCN":
+        model = AGCN(
+                    dim_in=args.dim_in,
+                    dim_out=args.dim_out,
+                    num_joints=args.num_joints,
+                    dropout=args.dropout,
+                    channels=args.channels,
+                    n_frame=args.n_frames,
+        )
+        
     else:
         raise Exception("Undefined model name")
 

@@ -3,3 +3,6 @@
 *.pyc
 wandb
 checkpoint/*.pth.tr
+data/motion3d
+data/mpi_inf_3dhp
+data/mpi_inf_3dhp_test_set

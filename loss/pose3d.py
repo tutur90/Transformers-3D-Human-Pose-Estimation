@@ -45,12 +45,14 @@ def p_mpjpe(predicted, target):
 
     muX = np.mean(target, axis=1, keepdims=True)
     muY = np.mean(predicted, axis=1, keepdims=True)
+    
 
     X0 = target - muX
     Y0 = predicted - muY
 
     normX = np.sqrt(np.sum(X0 ** 2, axis=(1, 2), keepdims=True))
     normY = np.sqrt(np.sum(Y0 ** 2, axis=(1, 2), keepdims=True))
+    
 
     X0 /= normX
     Y0 /= normY

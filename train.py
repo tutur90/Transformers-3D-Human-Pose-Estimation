@@ -26,6 +26,8 @@ from utils.learning import load_model, AverageMeter, decay_lr_exponentially
 from utils.tools import count_param_numbers
 from utils.data import Augmenter2D
 
+import matplotlib.pyplot as plt
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -48,9 +50,12 @@ def parse_args():
 
 def train_one_epoch(args, model, train_loader, optimizer, device, losses):
     model.train()
+    torch.autograd.set_detect_anomaly(True)
     for x, y in tqdm(train_loader):
         batch_size = x.shape[0]
         x, y = x.to(device), y.to(device)
+        
+
 
         with torch.no_grad():
             if args.root_rel:
@@ -59,7 +64,6 @@ def train_one_epoch(args, model, train_loader, optimizer, device, losses):
                 y[..., 2] = y[..., 2] - y[:, 0:1, 0:1, 2]  # Place the depth of first frame root to be 0
 
         pred = model(x)  # (N, T, 17, 3)
-
         optimizer.zero_grad()
 
         loss_3d_pos = loss_mpjpe(pred, y)
@@ -254,6 +258,7 @@ def train(args, opts):
                                 dt_root='data/motion3d', dt_file=args.dt_file)  # Used for H36m evaluation
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     model = load_model(args)
     if torch.cuda.is_available():
         model = torch.nn.DataParallel(model)

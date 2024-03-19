@@ -27,8 +27,8 @@ hierarchical: False
 use_temporal_similarity: True # Only useful when use_tcn = False
 neighbour_num: 2  # Only useful when use_temporal_similarity = True
 temporal_connection_len: 1 # Only useful when use_tcn = False, use_temporal_similarity = False
-use_tcn: False
-graph_only: False
+use_tcn: True
+graph_only: True
 n_frames: 27 # 27 if add_velocity is False else 26
 
 # Data

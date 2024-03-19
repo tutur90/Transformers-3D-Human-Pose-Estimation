@@ -51,3 +51,5 @@ lambda_av: 0.0
 # Augmentation
 use_proj_as_2d: False
 flip: True
+
+stride: 1

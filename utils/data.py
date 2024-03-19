@@ -249,4 +249,4 @@ def denormalize(pred, seq):
         out[idx, :, :, :2] = (out[idx, :, :, :2] + np.array([1, res_h / res_w])) * res_w / 2
         out[idx, :, :, 2:] = out[idx, :, :, 2:] * res_w / 2
     out = out - out[..., 0:1, :]
-    return torch.tensor(out).cuda()
+    return out

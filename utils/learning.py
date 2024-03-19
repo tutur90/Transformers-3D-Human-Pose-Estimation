@@ -1,6 +1,7 @@
 from model.MotionAGFormer import MotionAGFormer
 from model.GCN import MGCN
 from model.AGCN import AGCN
+from model.Linear import Linear
 from torch import nn
 import torch
 
@@ -75,6 +76,13 @@ def load_model(args):
                     dropout=args.dropout,
                     channels=args.channels,
                     n_frame=args.n_frames,
+        )
+    elif args.model_name == "Linear":
+        model = Linear(
+                    dim_in=args.dim_in,
+                    dim_out=args.dim_out,
+                    num_joints=args.num_joints,
+                    n_frames=args.n_frames,
         )
         
     else:

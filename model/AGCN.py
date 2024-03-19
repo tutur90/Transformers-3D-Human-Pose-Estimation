@@ -116,6 +116,7 @@ class AGCN(TemporalModelBase):
         self.data_bn = nn.BatchNorm1d(num_person * in_channels * num_point)
         A = self.graph.A
         self.expand_gcn = TCN_GCN_unit(dim_in, channels, A)
+        self.n_frames = n_frame
 
         self.causal_shift = []
         next_dilation = self.filter_widths[0]
@@ -172,5 +173,7 @@ class AGCN(TemporalModelBase):
         # print(pose_3d.size())
         
         pose_3d = self.fc(pose_3d_.permute(0, 2, 3, 1))
+        
+        pose_3d = pose_3d.repeat(1,self.n_frames,1,1)
 
         return pose_3d

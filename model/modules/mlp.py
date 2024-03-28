@@ -22,9 +22,12 @@ class MLP(nn.Module):
             self.fc2 = nn.Linear(hidden_features, out_features)
 
     def forward(self, x):
+        
         x = self.fc1(x)
         x = self.act(x)
         x = self.drop(x)
         x = self.fc2(x)
         x = self.drop(x)
+        
+        
         return x

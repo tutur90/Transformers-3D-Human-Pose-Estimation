@@ -138,6 +138,7 @@ def evaluate(model, test_loader, n_frames):
         pred_out[..., 14, :] = 0
         pred_out = denormalize(pred_out, seq)
         
+        pred_out = torch.tensor(pred_out, dtype=torch.float32)
         if torch.cuda.is_available():
             pred_out = pred_out.type(torch.cuda)
 

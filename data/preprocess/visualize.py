@@ -40,7 +40,7 @@ def read_h36m(args):
                          [0, 1, 0]], dtype=np.float32)
     scale_factor = 0.298
 
-    sample_joint_seq = read_pkl('../motion3d/H36M-243/test/%08d.pkl' % args.sequence_number)['data_label']
+    sample_joint_seq = read_pkl('../motion3d/H36M-27/test/%08d.pkl' % args.sequence_number)['data_label']
     sample_joint_seq = sample_joint_seq.transpose(1, 0, 2)
     sample_joint_seq = (sample_joint_seq / scale_factor) @ cam2real
     return sample_joint_seq

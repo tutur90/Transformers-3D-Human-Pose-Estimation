@@ -147,7 +147,7 @@ class MotionAGFormerBlock(nn.Module):
             x_attn = self.att_temporal(self.att_spatial(x))
             x_graph = self.graph_temporal(self.graph_spatial(x))
 
-        if self.hierarchical:
+        if self.hierarchical: 
             x = torch.cat((x_attn, x_graph), dim=-1)
         elif self.use_adaptive_fusion:
             alpha = torch.cat((x_attn, x_graph), dim=-1)

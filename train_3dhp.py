@@ -140,7 +140,7 @@ def evaluate(model, test_loader, n_frames):
         
         pred_out = torch.tensor(pred_out, dtype=torch.float32)
         if torch.cuda.is_available():
-            pred_out = pred_out.type(torch.cuda)
+            pred_out = pred_out.type(torch.cuda.FloatTensor)
 
         pred_out = pred_out - pred_out[..., 14:15, :] # Root-relative prediction
         
@@ -204,7 +204,8 @@ def train(args, opts):
     test_loader = DataLoader(test_dataset, shuffle=False, batch_size=args.test_batch_size, **common_loader_params)
     model = load_model(args)
     if torch.cuda.is_available():
-        model = torch.nn.DataParallel(model)
+        if args.parallel:
+            model = torch.nn.DataParallel(model)
         model = model.cuda()
 
     n_params = count_param_numbers(model)

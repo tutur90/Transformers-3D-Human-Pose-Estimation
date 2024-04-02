@@ -1,6 +1,6 @@
 #Training
 learning_rate: 0.0005
-batch_size: 16
+batch_size: 128
 weight_decay: 0.01
 lr_decay: 0.99
 epochs: 10
@@ -42,6 +42,10 @@ data_augmentation: True
 reverse_augmentation: False
 out_all: 1
 test_batch_size: 128
+
+
+parallel: True
+num_cpus: 40
 
 # Loss
 lambda_3d_velocity: 20.0

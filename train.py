@@ -261,7 +261,8 @@ def train(args, opts):
 
     model = load_model(args)
     if torch.cuda.is_available():
-        model = torch.nn.DataParallel(model)
+        if args.parallel:
+            model = torch.nn.DataParallel(model)
     model.to(device)
 
     n_params = count_param_numbers(model)

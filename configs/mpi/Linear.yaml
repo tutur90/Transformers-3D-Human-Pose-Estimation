@@ -43,6 +43,8 @@ reverse_augmentation: False
 out_all: 1
 test_batch_size: 128
 
+parallel: True
+
 # Loss
 lambda_3d_velocity: 20.0
 lambda_scale: 0.5

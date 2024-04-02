@@ -1,6 +1,6 @@
 #Training
 learning_rate: 0.0005
-batch_size: 16
+batch_size: 128
 weight_decay: 0.01
 lr_decay: 0.99
 epochs: 60
@@ -39,6 +39,8 @@ dt_file: h36m_sh_conf_cam_source_final.pkl
 num_joints: 17
 root_rel: True # Normalizing joints relative to the root joint
 add_velocity: False
+
+parallel: False
 
 # Loss
 lambda_3d_velocity: 20.0

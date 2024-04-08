@@ -7,6 +7,7 @@ import torch
 import wandb
 from torch import optim
 from tqdm import tqdm
+import logging
 
 from loss.pose3d import loss_mpjpe, n_mpjpe, loss_velocity, loss_limb_var, loss_limb_gt, loss_angle, \
     loss_angle_velocity
@@ -239,6 +240,7 @@ def save_checkpoint(checkpoint_path, epoch, lr, optimizer, model, min_mpjpe, wan
 def train(args, opts):
     print_args(args)
     create_directory_if_not_exists(opts.new_checkpoint)
+    logging.basicConfig(filename=f'log/h6m_{args.model_name}.log', level=logging.DEBUG)
 
     train_dataset = MotionDataset3D(args, args.subset_list, 'train')
     test_dataset = MotionDataset3D(args, args.subset_list, 'test')
@@ -362,7 +364,8 @@ def train(args, opts):
             }, step=epoch + 1)
 
         lr = decay_lr_exponentially(lr, lr_decay, optimizer)
-
+        logging.info(f'Epoch: {epoch} mpije: {mpjpe}')
+        
     if opts.use_wandb:
         artifact = wandb.Artifact(f'model', type='model')
         artifact.add_file(checkpoint_path_latest)

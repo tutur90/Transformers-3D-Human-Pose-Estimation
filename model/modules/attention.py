@@ -8,7 +8,7 @@ class Attention(nn.Module):
     """
 
     def __init__(self, dim_in, dim_out, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.,
-                 mode='spatial'):
+                 mode='spatial', negative_attention=True):
         super().__init__()
         self.num_heads = num_heads
         head_dim = dim_in // num_heads
@@ -19,6 +19,7 @@ class Attention(nn.Module):
         self.mode = mode
         self.qkv = nn.Linear(dim_in, dim_in * 3, bias=qkv_bias)
         self.proj_drop = nn.Dropout(proj_drop)
+        self.negative_attention = negative_attention
 
     def forward(self, x):
         B, T, J, C = x.shape
@@ -39,11 +40,9 @@ class Attention(nn.Module):
 
     def forward_spatial(self, q, k, v):
         B, H, T, J, C = q.shape
-        attn = (q @ k.transpose(-2, -1)) * self.scale  # (B, H, T, J, J)
-        attn = attn.softmax(dim=-1)
-        attn = self.attn_drop(attn)
-
-        x = attn @ v  # (B, H, T, J, C)
+        
+        x = self.attention(q, k, v, negative=self.negative_attention)
+        
         x = x.permute(0, 2, 3, 1, 4).reshape(B, T, J, C * self.num_heads)
         return x  # (B, T, J, C)
 
@@ -52,11 +51,20 @@ class Attention(nn.Module):
         qt = q.transpose(2, 3)  # (B, H, J, T, C)
         kt = k.transpose(2, 3)  # (B, H, J, T, C)
         vt = v.transpose(2, 3)  # (B, H, J, T, C)
+        
+        x = self.attention(qt, kt, vt, negative=self.negative_attention)
 
-        attn = (qt @ kt.transpose(-2, -1)) * self.scale  # (B, H, J, T, T)
-        attn = attn.softmax(dim=-1)
-        attn = self.attn_drop(attn)
-
-        x = attn @ vt  # (B, H, J, T, C)
         x = x.permute(0, 3, 2, 1, 4).reshape(B, T, J, C * self.num_heads)
         return x  # (B, T, J, C)
+    
+    def attention(self, q, k, v, negative=False):
+        
+        attn = (q @ k.transpose(-2, -1)) * self.scale  # (B, H, J, T, T)
+        if negative:
+            attn_sign = attn.sign()
+        attn = attn.abs()
+        attn = attn.softmax(dim=-1)
+        attn = attn_sign * attn if negative else attn
+        attn = self.attn_drop(attn)
+
+        return attn @ v  # (B, H, J, T, C)

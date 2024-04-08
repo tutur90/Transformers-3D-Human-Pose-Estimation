@@ -8,7 +8,7 @@ class Attention(nn.Module):
     """
 
     def __init__(self, dim_in, dim_out, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.,
-                 mode='spatial', negative_attention=False):
+                 mode='spatial', negative_attention=True):
         super().__init__()
         self.num_heads = num_heads
         head_dim = dim_in // num_heads
@@ -41,7 +41,7 @@ class Attention(nn.Module):
     def forward_spatial(self, q, k, v):
         B, H, T, J, C = q.shape
         
-        x = self.attention(q, k, v)
+        x = self.attention(q, k, v, negative=self.negative_attention)
         
         x = x.permute(0, 2, 3, 1, 4).reshape(B, T, J, C * self.num_heads)
         return x  # (B, T, J, C)
@@ -52,30 +52,22 @@ class Attention(nn.Module):
         kt = k.transpose(2, 3)  # (B, H, J, T, C)
         vt = v.transpose(2, 3)  # (B, H, J, T, C)
         
-        if self.negative_attention:
-            x = self.negative_attention(qt, kt, vt)
-        else:
-            x = self.attention(qt, kt, vt)
+        x = self.attention(qt, kt, vt, negative=self.negative_attention)
 
         x = x.permute(0, 3, 2, 1, 4).reshape(B, T, J, C * self.num_heads)
         return x  # (B, T, J, C)
     
-    def attention(self, q, k, v):
+    def attention(self, q, k, v, negative=False):
         
         attn = (q @ k.transpose(-2, -1)) * self.scale  # (B, H, J, T, T)
+        if negative:
+            attn_sign = attn.sign()
         attn = attn.softmax(dim=-1)
+        attn = attn_sign * attn if negative else attn
         attn = self.attn_drop(attn)
 
         return attn @ v  # (B, H, J, T, C)
     
-    def negative_attention(self, q, k, v):
-        
-        attn = (q @ k.transpose(-2, -1)) * self.scale 
-        
-        attn_sign = attn.sign()
-        attn = attn.abs().softmax(dim=-1)
-        
-        return attn_sign * attn @ v
     
         
         

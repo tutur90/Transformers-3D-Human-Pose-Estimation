@@ -1,6 +1,8 @@
 <a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a> 
 
-<a href="./Report.pdf"><div style="width: 60px; height: 20px; background-color: #550040; border-radius: 5px; solid #000;   display: flex; justify-content: center;"><p style="color: white;">Report</p></div></a>
+## [Report](./Report.pdf)
+
+<!-- (<div style="width: 60px; height: 20px; background-color: #550040; border-radius: 5px; solid #000;   display: flex; justify-content: center;"><p style="color: white;">Report</p></div> -->
 
 ## Disclamer
 

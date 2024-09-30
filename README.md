@@ -1,7 +1,10 @@
-<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a> [![arXiv](https://img.shields.io/badge/arXiv-2210.06551-b31b1b.svg)](https://arxiv.org/abs/2310.16288) <a href="https://youtu.be/iyLhxPjwBuQ?si=yoG-wlz7N1fq-PmY"><img alt="Paper Explanation" src="https://img.shields.io/badge/-Paper Explanation in 9 Minutes-ea3323?logo=youtube"></a>
+<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a> 
 
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/motionagformer-enhancing-3d-human-pose/monocular-3d-human-pose-estimation-on-human3)](https://paperswithcode.com/sota/monocular-3d-human-pose-estimation-on-human3?p=motionagformer-enhancing-3d-human-pose)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/motionagformer-enhancing-3d-human-pose/3d-human-pose-estimation-on-mpi-inf-3dhp?metric=MPJPE)](https://paperswithcode.com/sota/3d-human-pose-estimation-on-mpi-inf-3dhp?metric=MPJPE&p=motionagformer-enhancing-3d-human-pose)
+<a href="./Report.pdf"><div style="width: 60px; height: 20px; background-color: #550040; border-radius: 5px; solid #000;   display: flex; justify-content: center;"><p style="color: white;">Report</p></div></a>
+
+## Disclamer
+
+This project, including the code and the report, was developed for educational purposes. Some information may be inaccurate or incomplete. If you identify any errors or areas for improvement, please feel free to contact us at arthur.garon@gmail.com. We would greatly appreciate your feedback! ; )
 
 
 ## Environment
@@ -65,26 +68,7 @@ You can train MPI-INF-3DHP with the following command:
 python train_3dhp.py --config <PATH-TO-CONFIG>
 ```
 where config files are located at `configs/mpi`. Like Human3.6M, weight and biases can be used.
-## Evaluation
-| Method            | # frames  | # Params | # MACs         | H3.6M weights | MPI-INF-3DHP weights |
-|-------------------|-----------|----------|----------------|---------------|----------------------|
-| MotionAGFormer-XS |     27    |   2.2M  |      1.0G     |    [download](https://drive.google.com/file/d/1Pab7cPvnWG8NOVd0nnL1iqAfYCUY4hDH/view?usp=sharing)   |       [download](https://drive.google.com/file/d/1FebsaA-DGqB0Pba_dVXCQDedfG13Zu5O/view?usp=sharing)      |
-| MotionAGFormer-S  |     81    |   4.8M  |      6.6G     |    [download](https://drive.google.com/file/d/1DrF7WZdDvRPsH12gQm5DPXbviZ4waYFf/view?usp=sharing)   |       [download](https://drive.google.com/file/d/1RzTGl_9d_wm34ZnBqkQWqy22kOOq0Dx5/view?usp=sharing)       |
-| MotionAGFormer-B  | 243 \| 81 |  11.7M  | 48.3G \| 16G |    [download](https://drive.google.com/file/d/1Iii5EwsFFm9_9lKBUPfN8bV5LmfkNUMP/view?usp=drive_link)   |       [download](https://drive.google.com/file/d/18Pz0qQp7DvrrvDNqFtem5O5cBHBBAGg-/view?usp=sharing)      |
-| MotionAGFormer-L  | 243 \| 81 |  19.0M  | 78.3G \| 26G |    [download](https://drive.google.com/file/d/1WI8QSsD84wlXIdK1dLp6hPZq4FPozmVZ/view?usp=sharing)   |       [download](https://drive.google.com/file/d/10am2CelOV5Nt2NDhcEEMgFpdcuKN3J3G/view?usp=sharing)       |
 
-After downloading the weight from table above, you can evaluate Human3.6M models by:
-```
-python train.py --eval-only --checkpoint <CHECKPOINT-DIRECTORY> --checkpoint-file <CHECKPOINT-FILE-NAME> --config <PATH-TO-CONFIG>
-```
-For example if MotionAGFormer-L of H.36M is downloaded and put in `checkpoint` directory, then we can run:
-```
-python train.py --eval-only --checkpoint checkpoint --checkpoint-file motionagformer-l-h36m.pth.tr --config configs/h36m/MotionAGFormer-large.yaml
-```
-Similarly, MPI-INF-3DHP can be evaluated as follows:
-```
-python train_3dhp.py --eval-only --checkpoint <CHECKPOINT-DIRECTORY> --checkpoint-file <CHECKPOINT-FILE-NAME> --config <PATH-TO-CONFIG>
-```
 ## Demo
 Our demo is a modified version of the one provided by [MHFormer](https://github.com/Vegetebird/MHFormer) repository. First, you need to download YOLOv3 and HRNet pretrained models [here](https://drive.google.com/drive/folders/1_ENAMOsPM7FXmdYRbkwbFHgzQq_B_NQA?usp=sharing) and put it in the './demo/lib/checkpoint' directory. Next, download our base model checkpoint from [here](https://drive.google.com/file/d/1Iii5EwsFFm9_9lKBUPfN8bV5LmfkNUMP/view) and put it in the './checkpoint' directory. Then, you need to put your in-the-wild videos in the './demo/video' directory.
 
@@ -97,21 +81,9 @@ Sample demo output:
 <p align="center"><img src="figure/sample_video.gif" width="60%" alt="" /></p>
 
 ## Acknowledgement
-Our code refers to the following repositories:
+Our code refer to the following repositorie:
 
-- [MotionBERT](https://github.com/Walter0807/MotionBERT)
-- [P-STMO](https://github.com/paTRICK-swk/P-STMO)
-- [MHFormer](https://github.com/Vegetebird/MHFormer)
+- [MotionAGFormer](https://github.com/taatiteam/motionagformer)
 
 We thank the authors for releasing their codes.
 
-## Citation
-If you find our work useful for your project, please consider citing the paper:
-```
-@inproceedings{motionagformer2024,
-  title     =   {MotionAGFormer: Enhancing 3D Human Pose Estimation with a Transformer-GCNFormer Network}, 
-  author    =   {Soroush Mehraban, Vida Adeli, Babak Taati},
-  booktitle =   {Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision},
-  year      =   {2024}
-}
-```

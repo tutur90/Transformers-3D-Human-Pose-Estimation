@@ -31,7 +31,6 @@ class AGFormerBlock(nn.Module):
         # The following two techniques are useful to train deep GraphFormers.
         # self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.drop_path = nn.Dropout(p=drop_path)
-        self.use_layer_scale = use_layer_scale
 
     def forward(self, x):
         """

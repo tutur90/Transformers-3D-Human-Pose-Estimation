@@ -40,6 +40,8 @@ num_joints: 17
 root_rel: True # Normalizing joints relative to the root joint
 add_velocity: False
 
+parallel: True
+
 # Loss
 lambda_3d_velocity: 20.0
 lambda_scale: 0.5

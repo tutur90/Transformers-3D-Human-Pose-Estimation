@@ -8,6 +8,7 @@ import torch
 import wandb
 from torch import optim
 from tqdm import tqdm
+import logging
 
 from loss.pose3d import loss_mpjpe, n_mpjpe, loss_velocity, loss_limb_var, loss_limb_gt, loss_angle, \
     loss_angle_velocity
@@ -31,7 +32,8 @@ def parse_args():
     parser.add_argument('--new-checkpoint', type=str, metavar='PATH', default='mpi-checkpoint',
                         help='new checkpoint directory')
     parser.add_argument('-sd', '--seed', default=1, type=int, help='random seed')
-    parser.add_argument('--num-cpus', default=16, type=int, help='Number of CPU cores')
+    parser.add_argument('--num-cpus', default=48, type=int, help='Number of CPU cores')
+    parser.add_argument('--parallel')
     parser.add_argument('--use-wandb', action='store_true')
     parser.add_argument('--wandb-name', default=None, type=str)
     parser.add_argument('--wandb-run-id', default=None, type=str)
@@ -140,7 +142,7 @@ def evaluate(model, test_loader, n_frames):
         
         pred_out = torch.tensor(pred_out, dtype=torch.float32)
         if torch.cuda.is_available():
-            pred_out = pred_out.type(torch.cuda)
+            pred_out = pred_out.type(torch.cuda.FloatTensor)
 
         pred_out = pred_out - pred_out[..., 14:15, :] # Root-relative prediction
         
@@ -179,6 +181,7 @@ def save_checkpoint(checkpoint_path, epoch, lr, optimizer, model, min_mpjpe, wan
         'min_mpjpe': min_mpjpe,
         'wandb_id': wandb_id,
     }, checkpoint_path)
+    
 
 def save_data_inference(path, data_inference, latest):
     if latest:
@@ -188,6 +191,7 @@ def save_data_inference(path, data_inference, latest):
     scio.savemat(mat_path, data_inference)
 
 def train(args, opts):
+    logging.basicConfig(filename=f'log/{args.model_name}.log', level=logging.DEBUG)
     print_args(args)
     create_directory_if_not_exists(opts.new_checkpoint)
 
@@ -204,7 +208,8 @@ def train(args, opts):
     test_loader = DataLoader(test_dataset, shuffle=False, batch_size=args.test_batch_size, **common_loader_params)
     model = load_model(args)
     if torch.cuda.is_available():
-        model = torch.nn.DataParallel(model)
+        if args.parallel:
+            model = torch.nn.DataParallel(model)
         model = model.cuda()
 
     n_params = count_param_numbers(model)
@@ -218,7 +223,6 @@ def train(args, opts):
     epoch_start = 0
     min_mpjpe = float('inf')  # Used for storing the best model
     wandb_id = opts.wandb_run_id if opts.wandb_run_id is not None else wandb.util.generate_id()
-
     if opts.checkpoint:
         checkpoint_path = os.path.join(opts.checkpoint, opts.checkpoint_file if opts.checkpoint_file else "latest_epoch.pth.tr")
         if os.path.exists(checkpoint_path):
@@ -248,7 +252,7 @@ def train(args, opts):
                 print(f"Run ID: {wandb_id}")
                 wandb.init(id=wandb_id,
                         name=opts.wandb_name,
-                        project='MotionMetaFormer',
+                        project='HumanPostureReconstruction',
                         settings=wandb.Settings(start_method='fork'))
                 wandb.config.update({"run_id": wandb_id})
                 wandb.config.update(args)
@@ -278,6 +282,8 @@ def train(args, opts):
             save_data_inference(opts.new_checkpoint, data_inference, latest=False)
         save_checkpoint(checkpoint_path_latest, epoch, lr, optimizer, model, min_mpjpe, wandb_id)
         save_data_inference(opts.new_checkpoint, data_inference, latest=True)
+        
+        logging.info(f'Epoch: {epoch} mpije: {mpjpe}')
 
         if opts.use_wandb:
             wandb.log({
@@ -296,6 +302,7 @@ def train(args, opts):
             }, step=epoch + 1)
 
         lr = decay_lr_exponentially(lr, lr_decay, optimizer)
+        
 
     if opts.use_wandb:
         artifact = wandb.Artifact(f'model', type='model')
@@ -306,11 +313,11 @@ def train(args, opts):
 
 def main():
     opts = parse_args()
+
     set_random_seed(opts.seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
     args = get_config(opts.config)
-
     train(args, opts)
 
 

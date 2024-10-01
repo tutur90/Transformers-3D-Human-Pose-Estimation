@@ -2,7 +2,6 @@ from collections import OrderedDict
 
 import torch
 from torch import nn
-from timm.models.layers import DropPath
 
 from model.modules.attention import Attention
 from model.modules.graph import GCN
@@ -16,14 +15,13 @@ class AGFormerBlock(nn.Module):
     """
 
     def __init__(self, dim, mlp_ratio=4., act_layer=nn.GELU, attn_drop=0., drop=0., drop_path=0.,
-                 num_heads=8, qkv_bias=False, qk_scale=None, use_layer_scale=True, layer_scale_init_value=1e-5,
-                 mode='spatial', mixer_type="attention", use_temporal_similarity=True,
-                 temporal_connection_len=1, neighbour_num=4, n_frames=243):
+                 num_heads=8, qkv_bias=False, qk_scale=None, use_layer_scale=True, 
+                 mode='spatial', negative_attention=False):
         super().__init__()
         self.norm1 = nn.LayerNorm(dim)
-        if mixer_type == 'attention':
-            self.mixer = Attention(dim, dim, num_heads, qkv_bias, qk_scale, attn_drop,
-                                   proj_drop=drop, mode=mode)
+
+        self.mixer = Attention(dim, dim, num_heads, qkv_bias, qk_scale, attn_drop,
+                                   proj_drop=drop, mode=mode, negative_attention=negative_attention)
         self.norm2 = nn.LayerNorm(dim)
 
         mlp_hidden_dim = int(dim * mlp_ratio)
@@ -50,26 +48,17 @@ class MotionAGFormerBlock(nn.Module):
     """
 
     def __init__(self, dim, mlp_ratio=4., act_layer=nn.GELU, attn_drop=0., drop=0., drop_path=0.,
-                 num_heads=8, use_layer_scale=True, qkv_bias=False, qk_scale=None, layer_scale_init_value=1e-5,
-                 use_adaptive_fusion=True, hierarchical=False, use_temporal_similarity=True,
-                 temporal_connection_len=1, use_tcn=False, graph_only=False, neighbour_num=4, n_frames=243):
+                 num_heads=8, qkv_bias=False, qk_scale=None, n_frames=243, algatt_spatial=False, algatt_temporal=False):
         super().__init__()
-        self.hierarchical = hierarchical
-        dim = dim // 2 if hierarchical else dim
-
         # ST Attention branch
         self.att_spatial = AGFormerBlock(dim, mlp_ratio, act_layer, attn_drop, drop, drop_path, num_heads, qkv_bias,
-                                         qk_scale, use_layer_scale, layer_scale_init_value,
-                                         mode='spatial', mixer_type="attention",
-                                         use_temporal_similarity=use_temporal_similarity,
-                                         neighbour_num=neighbour_num,
-                                         n_frames=n_frames)
+                                         qk_scale,
+                                         mode='spatial', 
+                                          negative_attention=algatt_spatial)
         self.att_temporal = AGFormerBlock(dim, mlp_ratio, act_layer, attn_drop, drop, drop_path, num_heads, qkv_bias,
-                                          qk_scale, use_layer_scale, layer_scale_init_value,
-                                          mode='temporal', mixer_type="attention",
-                                          use_temporal_similarity=use_temporal_similarity,
-                                          neighbour_num=neighbour_num,
-                                          n_frames=n_frames)
+                                          qk_scale,
+                                          mode='temporal', 
+                                           negative_attention=algatt_temporal)
 
     def forward(self, x):
         """
@@ -82,9 +71,7 @@ class MotionAGFormerBlock(nn.Module):
 
 
 def create_layers(dim, n_layers, mlp_ratio=4., act_layer=nn.GELU, attn_drop=0., drop_rate=0., drop_path_rate=0.,
-                  num_heads=8, use_layer_scale=True, qkv_bias=False, qkv_scale=None, layer_scale_init_value=1e-5,
-                  use_adaptive_fusion=True, hierarchical=False, use_temporal_similarity=True,
-                  temporal_connection_len=1, use_tcn=False, graph_only=False, neighbour_num=4, n_frames=243):
+                  num_heads=8, qkv_bias=False, qkv_scale=None,  n_frames=243):
     """
     generates MotionAGFormer layers
     """
@@ -97,17 +84,8 @@ def create_layers(dim, n_layers, mlp_ratio=4., act_layer=nn.GELU, attn_drop=0., 
                                           drop=drop_rate,
                                           drop_path=drop_path_rate,
                                           num_heads=num_heads,
-                                          use_layer_scale=use_layer_scale,
-                                          layer_scale_init_value=layer_scale_init_value,
                                           qkv_bias=qkv_bias,
                                           qk_scale=qkv_scale,
-                                          use_adaptive_fusion=use_adaptive_fusion,
-                                          hierarchical=hierarchical,
-                                          use_temporal_similarity=use_temporal_similarity,
-                                          temporal_connection_len=temporal_connection_len,
-                                          use_tcn=use_tcn,
-                                          graph_only=graph_only,
-                                          neighbour_num=neighbour_num,
                                           n_frames=n_frames))
     layers = nn.Sequential(*layers)
 
@@ -164,17 +142,9 @@ class Transformers(nn.Module):
                                     drop_rate=drop,
                                     drop_path_rate=drop_path,
                                     num_heads=num_heads,
-                                    use_layer_scale=use_layer_scale,
                                     qkv_bias=qkv_bias,
                                     qkv_scale=qkv_scale,
-                                    layer_scale_init_value=layer_scale_init_value,
-                                    use_adaptive_fusion=use_adaptive_fusion,
-                                    hierarchical=hierarchical,
-                                    use_temporal_similarity=use_temporal_similarity,
-                                    temporal_connection_len=temporal_connection_len,
-                                    use_tcn=use_tcn,
-                                    graph_only=graph_only,
-                                    neighbour_num=neighbour_num,
+
                                     n_frames=n_frames)
 
         self.rep_logit = nn.Sequential(OrderedDict([
@@ -189,6 +159,7 @@ class Transformers(nn.Module):
         :param x: tensor with shape [B, T, J, C] (T=243, J=17, C=3)
         :param return_rep: Returns motion representation feature volume (In case of using this as backbone)
         """
+        
         x = self.joints_embed(x)
         x = x + self.pos_embed
 

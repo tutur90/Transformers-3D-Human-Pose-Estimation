@@ -3,7 +3,7 @@ learning_rate: 0.0005
 batch_size: 16
 weight_decay: 0.01
 lr_decay: 0.99
-epochs: 10
+epochs: 40
 
 # Model
 model_name: Transformers
@@ -20,11 +20,7 @@ drop_path: 0.0
 num_heads: 8
 qkv_bias: False
 qkv_scale: null
-# use_temporal_similarity: True # Only useful when use_tcn = False
-# neighbour_num: 2  # Only useful when use_temporal_similarity = True
-# temporal_connection_len: 1 # Only useful when use_tcn = False, use_temporal_similarity = False
 n_frames: 27
-negative_attention: False
 
 # Data
 data_root: data/motion3d/
@@ -37,6 +33,10 @@ data_augmentation: True
 reverse_augmentation: False
 out_all: 1
 test_batch_size: 128
+
+
+parallel: False
+num_cpus: 40
 
 # Loss
 lambda_3d_velocity: 20.0

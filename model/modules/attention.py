@@ -62,13 +62,9 @@ class Attention(nn.Module):
         attn = (q @ k.transpose(-2, -1)) * self.scale  # (B, H, J, T, T)
         if negative:
             attn_sign = attn.sign()
+        attn = attn.abs()
         attn = attn.softmax(dim=-1)
         attn = attn_sign * attn if negative else attn
         attn = self.attn_drop(attn)
 
         return attn @ v  # (B, H, J, T, C)
-    
-    
-        
-        
-        

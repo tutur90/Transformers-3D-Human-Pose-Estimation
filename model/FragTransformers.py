@@ -2,12 +2,62 @@ from collections import OrderedDict
 
 import torch
 from torch import nn
-# from timm.models.layers import DropPath
 
 from model.modules.attention import Attention
 from model.modules.graph import GCN
 from model.modules.mlp import MLP
 from model.modules.tcn import MultiScaleTCN
+
+class RevLinear(nn.Module):
+    def __init__(self, in_features, out_features, A=None, bias = True, inverse_param=False, inv_pinv=True):
+        super(RevLinear, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        
+        
+        if A is None:
+            self.A = nn.Parameter(torch.rand(out_features, in_features).T)
+        else:
+            self.A = A
+        
+        if inverse_param:
+            self.A_inv = nn.Parameter(torch.zeros(out_features, in_features).T)
+        else:
+            self.A_inv = None
+        
+            
+        if bias:
+            self.bias = nn.Parameter(torch.zeros(out_features))
+            self.bias_inv = nn.Parameter(torch.zeros(in_features))
+        else:
+            self.bias = None
+            self.bias_inv = None
+            
+        self.inv_pinv = inv_pinv
+        
+    def forward(self, x, inverse=False):
+
+        if not inverse:
+            x = x @ self.A
+
+            if self.bias is not None:
+                x = x + self.bias
+            return x
+        else:
+            if self.bias is not None:
+                x = x - self.bias   
+            if self.A_inv is not None:
+                
+                if self.inv_pinv:
+                    A = torch.linalg.pinv(self.A + self.A_inv)
+                else:
+                    A = torch.linalg.pinv(self.A) + self.A_inv.T
+            else:
+                A = self.A
+            x = x @ (A)
+            if self.bias_inv is not None:
+                x = x + self.bias_inv
+            return x
 
 
 class AGFormerBlock(nn.Module):
@@ -24,17 +74,6 @@ class AGFormerBlock(nn.Module):
         if mixer_type == 'attention':
             self.mixer = Attention(dim, dim, num_heads, qkv_bias, qk_scale, attn_drop,
                                    proj_drop=drop, mode=mode)
-        elif mixer_type == 'graph':
-            self.mixer = GCN(dim, dim,
-                             num_nodes=17 if mode == 'spatial' else n_frames,
-                             neighbour_num=neighbour_num,
-                             mode=mode,
-                             use_temporal_similarity=use_temporal_similarity,
-                             temporal_connection_len=temporal_connection_len)
-        elif mixer_type == "ms-tcn":
-            self.mixer = MultiScaleTCN(in_channels=dim, out_channels=dim)
-        else:
-            raise NotImplementedError("AGFormer mixer_type is either attention or graph")
         self.norm2 = nn.LayerNorm(dim)
 
         mlp_hidden_dim = int(dim * mlp_ratio)
@@ -42,26 +81,17 @@ class AGFormerBlock(nn.Module):
                        act_layer=act_layer, drop=drop)
 
         # The following two techniques are useful to train deep GraphFormers.
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        # self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.drop_path = nn.Dropout(p=drop_path)
         self.use_layer_scale = use_layer_scale
-        if use_layer_scale:
-            self.layer_scale_1 = nn.Parameter(layer_scale_init_value * torch.ones(dim), requires_grad=True)
-            self.layer_scale_2 = nn.Parameter(layer_scale_init_value * torch.ones(dim), requires_grad=True)
 
     def forward(self, x):
         """
         x: tensor with shape [B, T, J, C]
         """
-        if self.use_layer_scale:
-            x = x + self.drop_path(
-                self.layer_scale_1.unsqueeze(0).unsqueeze(0)
-                * self.mixer(self.norm1(x)))
-            x = x + self.drop_path(
-                self.layer_scale_2.unsqueeze(0).unsqueeze(0)
-                * self.mlp(self.norm2(x)))
-        else:
-            x = x + self.drop_path(self.mixer(self.norm1(x)))
-            x = x + self.drop_path(self.mlp(self.norm2(x)))
+
+        x = x + self.drop_path(self.mixer(self.norm1(x)))
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
 
 
@@ -92,72 +122,14 @@ class MotionAGFormerBlock(nn.Module):
                                           neighbour_num=neighbour_num,
                                           n_frames=n_frames)
 
-        # ST Graph branch
-        if graph_only:
-            self.graph_spatial = GCN(dim, dim,
-                                     num_nodes=17,
-                                     mode='spatial')
-            if use_tcn:
-                self.graph_temporal = MultiScaleTCN(in_channels=dim, out_channels=dim)
-            else:
-                self.graph_temporal = GCN(dim, dim,
-                                          num_nodes=n_frames,
-                                          neighbour_num=neighbour_num,
-                                          mode='temporal',
-                                          use_temporal_similarity=use_temporal_similarity,
-                                          temporal_connection_len=temporal_connection_len)
-        else:
-            self.graph_spatial = AGFormerBlock(dim, mlp_ratio, act_layer, attn_drop, drop, drop_path, num_heads,
-                                               qkv_bias,
-                                               qk_scale, use_layer_scale, layer_scale_init_value,
-                                               mode='spatial', mixer_type="graph",
-                                               use_temporal_similarity=use_temporal_similarity,
-                                               temporal_connection_len=temporal_connection_len,
-                                               neighbour_num=neighbour_num,
-                                               n_frames=n_frames)
-            self.graph_temporal = AGFormerBlock(dim, mlp_ratio, act_layer, attn_drop, drop, drop_path, num_heads,
-                                                qkv_bias,
-                                                qk_scale, use_layer_scale, layer_scale_init_value,
-                                                mode='temporal', mixer_type="ms-tcn" if use_tcn else 'graph',
-                                                use_temporal_similarity=use_temporal_similarity,
-                                                temporal_connection_len=temporal_connection_len,
-                                                neighbour_num=neighbour_num,
-                                                n_frames=n_frames)
-
-        self.use_adaptive_fusion = use_adaptive_fusion
-        if self.use_adaptive_fusion:
-            self.fusion = nn.Linear(dim * 2, 2)
-            self._init_fusion()
-
-    def _init_fusion(self):
-        self.fusion.weight.data.fill_(0)
-        self.fusion.bias.data.fill_(0.5)
-
     def forward(self, x):
         """
         x: tensor with shape [B, T, J, C]
         """
-        if self.hierarchical:
-            B, T, J, C = x.shape
-            x_attn, x_graph = x[..., :C // 2], x[..., C // 2:]
 
-            x_attn = self.att_temporal(self.att_spatial(x_attn))
-            x_graph = self.graph_temporal(self.graph_spatial(x_graph + x_attn))
-        else:
-            x_attn = self.att_temporal(self.att_spatial(x))
-            x_graph = self.graph_temporal(self.graph_spatial(x))
-
-        if self.hierarchical: 
-            x = torch.cat((x_attn, x_graph), dim=-1)
-        elif self.use_adaptive_fusion:
-            alpha = torch.cat((x_attn, x_graph), dim=-1)
-            alpha = self.fusion(alpha)
-            alpha = alpha.softmax(dim=-1)
-            x = x_attn * alpha[..., 0:1] + x_graph * alpha[..., 1:2]
-        else:
-            x = (x_attn + x_graph) * 0.5
-
-        return x
+        x_attn = self.att_temporal(self.att_spatial(x))
+        
+        return x_attn
 
 
 def create_layers(dim, n_layers, mlp_ratio=4., act_layer=nn.GELU, attn_drop=0., drop_rate=0., drop_path_rate=0.,
@@ -193,7 +165,7 @@ def create_layers(dim, n_layers, mlp_ratio=4., act_layer=nn.GELU, attn_drop=0., 
     return layers
 
 
-class MotionAGFormer(nn.Module):
+class FragTransformers(nn.Module):
     """
     MotionAGFormer, the main class of our model.
     """
@@ -232,8 +204,10 @@ class MotionAGFormer(nn.Module):
         super().__init__()
 
         self.joints_embed = nn.Linear(dim_in, dim_feat)
-        self.pos_embed = nn.Parameter(torch.zeros(1, num_joints, dim_feat))
+        self.pos_embed = nn.Parameter(torch.zeros(1, 32, dim_feat))
         self.norm = nn.LayerNorm(dim_feat)
+        
+        self.revlin = RevLinear(num_joints, 32, bias=False, inverse_param=True)
 
         self.layers = create_layers(dim=dim_feat,
                                     n_layers=n_layers,
@@ -268,6 +242,7 @@ class MotionAGFormer(nn.Module):
         :param x: tensor with shape [B, T, J, C] (T=243, J=17, C=3)
         :param return_rep: Returns motion representation feature volume (In case of using this as backbone)
         """
+        x = self.revlin(x.transpose(-1,-2)).transpose(-1,-2)
         x = self.joints_embed(x)
         x = x + self.pos_embed
 
@@ -276,23 +251,26 @@ class MotionAGFormer(nn.Module):
 
         x = self.norm(x)
         x = self.rep_logit(x)
+        
         if return_rep:
             return x
+ 
 
         x = self.head(x)
+        
+        x = self.revlin(x.transpose(-1,-2), inverse=True).transpose(-1,-2)
 
         return x
 
-
 def _test():
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     from torchprofile import profile_macs
     import warnings
     warnings.filterwarnings('ignore')
     b, c, t, j = 1, 3, 27, 17
-    random_x = torch.randn((b, t, j, c)).to('cuda')
+    random_x = torch.randn((b, t, j, c)).to(device)
 
-    model = MotionAGFormer(n_layers=12, dim_in=3, dim_feat=64, mlp_ratio=4, hierarchical=False,
-                           use_tcn=False, graph_only=False, n_frames=t).to('cuda')
+    model = FragTransformers(dim_in=3, dim_out=3, num_joints=17).to(device)
     model.eval()
 
     model_params = 0
@@ -304,6 +282,7 @@ def _test():
     # Warm-up to avoid timing fluctuations
     for _ in range(10):
         _ = model(random_x)
+        # print(_)
 
     import time
     num_iterations = 100 
@@ -321,6 +300,7 @@ def _test():
     fps = 1.0 / average_inference_time
 
     print(f"FPS: {fps}")
+    
     
 
     out = model(random_x)

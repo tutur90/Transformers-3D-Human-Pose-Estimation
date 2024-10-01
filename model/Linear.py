@@ -3,7 +3,6 @@ from collections import OrderedDict
 import torch
 from torch import nn
 import numpy as np
-from timm.models.layers import DropPath
 from data.const import H36M_TO_MPI
 
 import matplotlib.pyplot as plt
